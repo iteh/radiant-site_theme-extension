@@ -4,7 +4,7 @@ require_dependency 'application_controller'
 # Going to need this to add regions to the extension interface
 require 'ostruct'
 
-class SiteSkinsExtension < Radiant::Extension
+class SiteThemeExtension < Radiant::Extension
   version "1.0"
   description "Custom themes for Radiant Sites"
   url ""
@@ -19,30 +19,21 @@ class SiteSkinsExtension < Radiant::Extension
    end
   
   def activate
-    admin.nav[:content] << admin.nav_item(:look, "Look & Feel", "/admin/skins")
-    admin.nav[:content].reverse!
+    tab 'Design' do 
+      add_item("Theme", "/admin/skins")
+    end
     UserActionObserver.instance.send :add_observer!, Skin
 
-    # Include custom tags
     Page.send :include, SiteSkinTags
-
-    # This adds information to the Radiant interface.
+    Site.class_eval {
+      belongs_to :skin
+    }
+    
     Radiant::AdminUI.class_eval do
       attr_accessor :skins
     end
 
-    # initialize regions for skin (which was created above)
     admin.skins = load_default_skin_regions
-
-    # Provide the ability to replace regions...
-    # Don't like how the regions are setup? Hack it without changing this extension's code
-    # Be forewarned, this allows you to completely change the UI
-    Radiant::AdminUI::RegionSet.class_eval do
-      def replace(region=nil, partial=nil)
-        raise ArgumentError, "You must specify a region and a partial" unless region and partial
-        self[region].replace([partial])
-      end
-    end
   end
 
   private
