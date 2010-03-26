@@ -1,5 +1,5 @@
 require 'fileutils'
-class Admin::SkinsController < ApplicationController
+class Admin::ThemesController < ApplicationController
 	def index
     @skins = Skin.paginate :page => params[:page] || 1, :per_page => 12, :order => 'name ASC'
 	end	
@@ -11,7 +11,7 @@ class Admin::SkinsController < ApplicationController
   def update
     @skin = Skin.find(params[:id])
     if @skin.update_attributes(params[:skin])
-      redirect_to admin_skins_url
+      redirect_to admin_themes_url
     else
       render :action => 'show'
     end
@@ -22,17 +22,17 @@ class Admin::SkinsController < ApplicationController
     @skin.save!
     begin
 		  @skin.unzip_and_process_skin
-      redirect_to admin_skins_url
+      redirect_to admin_themes_url
     rescue ActiveRecord::RecordNotSaved => invalid
       @skin.delete
       flash[:error] = "A Skin with that name already exists in the system."
-      redirect_to admin_skins_url
+      redirect_to admin_themes_url
     rescue Exception => e
       @skin.delete
       logger.info e.message
       logger.info e.backtrace
       flash[:error] = e.message
-      redirect_to admin_skins_url      
+      redirect_to admin_themes_url      
     end
   end
   
@@ -44,7 +44,7 @@ class Admin::SkinsController < ApplicationController
 		  skin_dir = File::join(RAILS_ROOT, "public", "system", "images", @skin.id.to_s)
 		  FileUtils.rm_r(skin_dir)    
 		  @skin.destroy
-      redirect_to admin_skins_url
+      redirect_to admin_themes_url
     else
       flash[:error] = "Only the user who created this Skin may delete it."
       redirect_to :back
@@ -63,7 +63,7 @@ class Admin::SkinsController < ApplicationController
       logger.info e.backtrace
       flash[:error] = e.message
     ensure
-		  redirect_to admin_skins_url
+		  redirect_to admin_themes_url
     end
 	end
 
@@ -76,13 +76,13 @@ class Admin::SkinsController < ApplicationController
       logger.info e.backtrace
       flash[:error] = e.message
     ensure		
-      redirect_to admin_skins_url
+      redirect_to admin_themes_url
     end
 	end
 
-  def search_skins
+  def search
     @skins = Skin.search(params[:skin][:query], params[:page])
-    render :template => "admin/skins/index"
+    render :template => "admin/themes/index"
   end
 
 end

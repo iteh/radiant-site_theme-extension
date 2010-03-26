@@ -73,20 +73,14 @@ class Skin < ActiveRecord::Base
 		}
 
 
-    if Layout.exists?(:name => "#{skin_name}", :site_id => site.id)
-		  layout = Layout.first(:conditions => {:name => "#{skin_name}", :site_id => site.id})
-      layout.content = skin_zip.read("#{skin_name}/layout.html")
-      layout.save!
-    else
-      # Create the default layout
-		  layout = Layout.new(
-			  :name => "#{skin_name}", 
-			  :content => skin_zip.read("#{skin_name}/layout.html"),
-			  :site_id => site.id, 
-			  :created_by_id => user.id
-		  )
-      layout.save!
-		end
+    # Create the default layout
+	  layout = Layout.find_or_initialize_by_name(
+		  :name => "#{skin_name}", 
+		  :content => skin_zip.read("#{skin_name}/layout.html"),
+		  :site_id => site.id, 
+		  :created_by_id => user.id
+	  )
+    layout.save!
 
     if Layout.exists?(:name => "stylesheet", :site_id => site.id)
 		  style = Layout.first(:conditions => {:name => "stylesheet", :site_id => site.id})

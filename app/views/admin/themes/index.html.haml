@@ -1,0 +1,12 @@
+- @page_title = 'Themes - ' + default_page_title
+- include_stylesheet 'site_skins/site_skins'
+
+- body_classes << "split"
+
+.theme_list
+  - render_region :main do |main|
+    - main.render_region :theme_list
+
+.theme_details
+  - render_region :sidebar do |sidebar|
+    - sidebar.render_region :sidebar_boxes

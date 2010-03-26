@@ -1,4 +1,4 @@
-- form_for :skin, :html => { :multipart => true, :onsubmit_status=>"Adding new skin&#8230;" }, :url => admin_skins_path do |form|
+- form_for :skin, :html => { :multipart => true, :onsubmit_status=>"Adding new skin&#8230;" }, :url => admin_themes_path do |form|
   %h3 Upload A Template
   = form.file_field :archive, :size => "20", :class => "file_field"
   %div{:class => "below_input"}

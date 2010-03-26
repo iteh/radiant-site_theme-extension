@@ -11,16 +11,13 @@ class SiteThemeExtension < Radiant::Extension
   
    define_routes do |map|
      map.namespace :admin, :member => { :remove => :get } do |admin|
-			 admin.resources :skins
+			 admin.resources :themes, :member => {:activate => :get, :deactivate => :put}, :collection => {:search => :get}
 		 end
-		 map.activate_skin 'admin/skins/activate/:id', :controller => 'admin/skins', :action => 'activate'
-		 map.deactivate_skin 'admin/skins/deactivate/:id', :controller => 'admin/skins', :action => 'deactivate'
-     map.search 'admin/skins/search', :controller => 'admin/skins', :action => 'search_skins'
    end
   
   def activate
     tab 'Design' do 
-      add_item("Theme", "/admin/skins")
+      add_item("Themes", "/admin/themes")
     end
     UserActionObserver.instance.send :add_observer!, Skin
 
@@ -30,24 +27,24 @@ class SiteThemeExtension < Radiant::Extension
     }
     
     Radiant::AdminUI.class_eval do
-      attr_accessor :skins
+      attr_accessor :themes
     end
 
-    admin.skins = load_default_skin_regions
+    admin.themes = load_default_themes_regions
   end
 
   private
 
   # Define the regions to be used in the views and partials
-  def load_default_skin_regions
-    returning OpenStruct.new do |skin|
-      skin.index = Radiant::AdminUI::RegionSet.new  do |index|
-        index.main.concat %w{skin_list}
+  def load_default_themes_regions
+    returning OpenStruct.new do |themes|
+      themes.index = Radiant::AdminUI::RegionSet.new  do |index|
+        index.main.concat %w{theme_list}
         index.sidebar.concat %w{sidebar_boxes}
       end
-      skin.search_skins = Radiant::AdminUI::RegionSet.new  do |search_skins|
-        search_skins.main.concat %w{skin_list}
-        search_skins.sidebar.concat %w{sidebar_boxes}
+      themes.search_themes = Radiant::AdminUI::RegionSet.new  do |search_themes|
+        search_themes.main.concat %w{theme_list}
+        search_themes.sidebar.concat %w{sidebar_boxes}
       end
     end
   end
