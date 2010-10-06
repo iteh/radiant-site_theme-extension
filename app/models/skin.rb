@@ -181,8 +181,7 @@ class Skin < ActiveRecord::Base
            if line =~ /(<r:assets:.+\/>)/
              line = insert_asset_url(line, site.id)
            end
-           line.gsub!(/\{site_path\}/, site.hostname)     
-           line.gsub!(/\{site_id\}/, site.id.to_s)     
+           line.gsub!(/\{site_id\}/, site.id.to_s)
 					contents << line
 				end
 		
@@ -208,8 +207,7 @@ class Skin < ActiveRecord::Base
            if line =~ /(<r:assets:.+\/>)/
              line = insert_asset_url(line, site.id)
            end
-           line.gsub!(/\{site_path\}/, site.hostname)     
-           line.gsub!(/\{site_id\}/, site.id.to_s)     
+           line.gsub!(/\{site_id\}/, site.id.to_s)
 					contents << line
 				end
         		
