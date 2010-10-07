@@ -139,10 +139,10 @@ class Skin < ActiveRecord::Base
       next if image == '.'
       next if image == '..'
       img = File.open("#{extract_point}/#{site.id.to_s}/#{skin_name}/images/#{image}", "r")
-      asset = Asset.new
+      asset = Image.new
       asset.asset = img
       asset.title = image.chomp(File.extname(image))
-      asset.created_by_id = user.id
+      asset.created_by_id = user.id if asset.respond_to? :created_by_id
       asset.site_id = site.id
       asset.skin_image = true
       asset.save!
@@ -302,13 +302,13 @@ class Skin < ActiveRecord::Base
     #  Snippet.destroy(snippet.id)
     #}
 
-    #assets = Asset.find(:all, :conditions => ["site_id = ? AND skin_image = ?", site.id, true])
+    #assets = Image.find(:all, :conditions => ["site_id = ? AND skin_image = ?", site.id, true])
     #assets.each { |asset|
-    #  Asset.destroy(asset.id)
+    #  Image.destroy(asset.id)
     #}
 
     Layout.delete_all(["site_id = ?", site.id])
-    Asset.delete_all(["site_id = ? AND skin_image = ?", site.id, true])
+    Image.delete_all(["site_id = ? AND skin_image = ?", site.id, true])
     #Page.destroy_all(["site_id = ?", site.id])
     Snippet.delete_all(["site_id = ?", site.id])
 
@@ -338,7 +338,7 @@ class Skin < ActiveRecord::Base
 
     asset_title = matches[0][1..-2]
     asset_size = matches[1][1..-2]
-    asset = Asset.first(:conditions => {:title => asset_title, :site_id => site_id})
+    asset = Image.first(:conditions => {:title => asset_title, :site_id => site_id})
     if asset_size != nil
       original_line.gsub!(/(<r:assets:url.+\/>)(?=")/, "/assets/#{asset.id}/#{asset_title}_#{asset_size}#{File.extname(asset.asset_file_name)}")
     else
