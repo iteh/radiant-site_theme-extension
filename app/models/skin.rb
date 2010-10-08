@@ -77,18 +77,19 @@ class Skin < ActiveRecord::Base
     }
 
     # Add Skin images to assets
-#    Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do  |image|
-#      img_name = ((image.gsub(/^(.*)#{skin_name}\/images\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
-#      img = File.open(image, "r")
-#      asset = Image.new
-#      asset.asset = img
-#      #asset.asset_file_name = img_name
-#      asset.title = img_name
-#      asset.created_by_id = user.id if asset.respond_to? :created_by_id
-#      asset.site_id = site.id
-#      asset.skin_image = true
-#      asset.save!
-#    end
+    Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do  |image|
+      img_name = ((image.gsub(/^(.*)#{skin_name}\/images\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
+      new_filename =  File.join(File.dirname(image),img_name)
+      FileUtils.mv image , new_filename if image != new_filename
+      img = File.open(new_filename, "r")
+      asset = Image.new
+      asset.asset = img
+      asset.title = img_name
+      asset.created_by_id = user.id if asset.respond_to? :created_by_id
+      asset.site_id = site.id
+      asset.skin_image = true
+      asset.save!
+    end
 
     Dir.glob("#{skin_root}/javascripts/**/*.{js}").each do |file_name|
       js_name = ((file_name.gsub(/^(.*)#{skin_name}\/javascripts\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
@@ -106,6 +107,17 @@ class Skin < ActiveRecord::Base
     Dir.glob("#{skin_root}/styles/**/*.{css}").each do |file_name|
       style_name = ((file_name.gsub(/^(.*)#{skin_name}\/styles\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
       style_content = File.read(file_name)
+
+      # url(blue-glossy/background-2.jpg)
+      # 3 =>  blue-glossy/background-2.jpg
+      # url(../image/background-2.jpg)
+      # 3 =>  background-2.jpg
+
+      style_content = style_content.gsub(/url\((\.\.\/)*(images\/)?(.*)\)/) { |match|
+        img = Image.find_by_title($3.gsub(/\//, DIRECTORY_SEPARATOR))
+        url = (img && img.asset) ? img.asset.url(:original,false) : $3
+        "url(#{url})"
+      }
       style = Stylesheet.find_or_initialize_by_name(
               :name => "#{skin_name}-#{style_name}",
               :content => style_content,
@@ -150,7 +162,7 @@ class Skin < ActiveRecord::Base
 
       doc = Hpricot(layout_content)
       doc.search('script').each do |js|
-        if js.attributes['src'] then
+        if js.attributes['src'] && !js.attributes['ignore'] then
           tag = js.attributes['src']
           tag = tag.gsub("js/", '')
           javascript = Javascript.find_by_name("#{skin_name}-#{tag}")
@@ -168,6 +180,17 @@ class Skin < ActiveRecord::Base
           css.raw_attributes = css.attributes.merge("href" => stylesheet.url) if stylesheet
         end
       end
+
+      doc = Hpricot(doc.to_s)
+      doc.search('img').each do |image|
+        if image.attributes['src'] then
+          src = image.attributes['src']
+          img = Image.find_by_title(src.gsub(/(\.\.\/)*images\//,'').gsub(/\//, DIRECTORY_SEPARATOR))
+          new_src = (img && img.asset) ? img.asset.url(:original,false) : src
+          image.raw_attributes = image.attributes.merge("src" => new_src) if img
+        end
+      end
+
       layout.content = doc.to_s
       layout.save!
 
@@ -326,43 +349,6 @@ class Skin < ActiveRecord::Base
 #      end
 #
 #
-#    }
-#
-#    # Add Skin styles
-#    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/styles") { |sheet|
-#      next if sheet == '.'
-#      next if sheet == '..'
-#      next if sheet == nil
-#
-#      # Create a style page.
-#      File.open("#{extract_point}/#{site.id.to_s}/#{skin_name}/styles/#{sheet}", "r") do |file|
-#        contents = ""
-#        while line = file.gets
-#          contents << line
-#        end
-#
-#        ssheet = StyleSheet.new
-#        ssheet.title = sheet
-#        ssheet.layout_id = style.id
-#        ssheet.slug = sheet
-#        ssheet.breadcrumb = sheet.split(/\./)[0]
-#        ssheet.description = ''
-#        ssheet.keywords = ''
-#        ssheet.created_by_id = user.id
-#        ssheet.status_id = 100
-#        ssheet.site_id = site.id
-#        ssheet.parent_id = homepage.id
-#        ssheet.skin_page = true
-#        ssheet.save!
-#
-#        part = PagePart.new(
-#                :name => 'body',
-#                :content => contents,
-#                :page_id => ssheet.id,
-#                :skin_page_part => true
-#        )
-#        part.save!
-#      end
 #    }
 
 
