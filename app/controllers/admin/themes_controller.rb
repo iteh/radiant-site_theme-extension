@@ -39,18 +39,18 @@ class Admin::ThemesController < ApplicationController
   def destroy
     @skin = Skin.find(params[:id])
     if @skin.created_by == current_user || current_user.admin?
-		  File.delete(@skin.archive.path)
-		  File.delete(@skin.image.path)
+		  File.delete(@skin.archive.path) if File.exist?(@skin.archive.path)
+		  File.delete(@skin.image.path) if File.exist?(@skin.image.path)
 		  skin_dir = File::join(RAILS_ROOT, "public", "system", "images", @skin.id.to_s)
-		  FileUtils.rm_r(skin_dir)    
+		  FileUtils.rm_r(skin_dir) if File.exist?(skin_dir)
 		  @skin.destroy
       redirect_to admin_themes_url
     else
       flash[:error] = "Only the user who created this Skin may delete it."
       redirect_to :back
     end
-    rescue ActiveRecord::RecordNotFound
-      flash[:error] = 'This Skin could not be found.'
+    rescue ActiveRecord::RecordNotFound, Errno::ENOENT
+      flash[:error] = 'This Skin could not be found or deleted'
       redirect_to '/admin/site_skins'
   end
 
