@@ -5,9 +5,13 @@ require_dependency 'application_controller'
 require 'ostruct'
 
 class SiteThemeExtension < Radiant::Extension
-  version "1.0"
+  version "1.1"
   description "Custom themes for Radiant Sites"
-  url ""
+  url "http://github.com/iteh/radiant-site_theme-extension"
+
+  extension_config do |config|
+    config.gem 'hpricot', :version => '~> 0.8.2'
+  end
   
    define_routes do |map|
      map.namespace :admin, :member => { :remove => :get } do |admin|

@@ -192,7 +192,7 @@ class Skin < ActiveRecord::Base
           tag = js.attributes['src']
           tag = tag.gsub("js/", '')
           javascript = Javascript.find_by_name("#{skin_name}-#{tag}")
-          js.raw_attributes = js.attributes.merge("src" => javascript.url) if javascript
+          js.attributes["src"] = javascript.url if javascript
         end
       end
 
@@ -203,14 +203,14 @@ class Skin < ActiveRecord::Base
           tag = tag.gsub("css/", '')
           tag = tag.gsub("styles/", "styles#{DIRECTORY_SEPARATOR}")
           stylesheet = Stylesheet.find_by_name("#{skin_name}-#{tag}")
-          css.raw_attributes = css.attributes.merge("href" => stylesheet.url) if stylesheet
+          css.attributes["href"] = stylesheet.url if stylesheet
         end
       end
 
       doc = Hpricot(doc.to_s)
       doc.search('img').each do |image|
         if image.attributes['src'] then
-          image.raw_attributes = image.attributes.merge("src" => fix_image_source(image.attributes['src'], skin_root,public_theme_path))
+          image.attributes["src"] = fix_image_source(image.attributes['src'], skin_root,public_theme_path)
         end
       end
 
