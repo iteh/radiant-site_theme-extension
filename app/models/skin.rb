@@ -82,13 +82,13 @@ class Skin < ActiveRecord::Base
     skin_zip = Zip::ZipFile.open(self.archive.path, Zip::ZipFile::CREATE)
 
     # Extract skin zip contents. We will remove this folder when were done.
-    extract_point = File::join RAILS_ROOT, "lib", "skins", "extracts"
+    extract_point = File::join RAILS_ROOT, "tmp", "skins", "extracts"
     skin_root = File::join extract_point, site.id.to_s, skin_name
 
     # Make sure this skin hasn't already been extracted. If it has delete it.
     FileUtils.rm_rf(File.join(extract_point, site.id.to_s)) if File.exist?(File.join(extract_point, site.id.to_s))
 
-    # Create a new folder in lib/skins/extracts and dump the contents of the skin zip in there.
+    # Create a new folder in tmp/skins/extracts and dump the contents of the skin zip in there.
     skin_zip.each { |e|
       fpath = File.join(extract_point, site.id.to_s, e.name)
       FileUtils.mkdir_p(File.dirname(fpath))
