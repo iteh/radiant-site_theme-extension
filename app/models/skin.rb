@@ -49,15 +49,15 @@ class Skin < ActiveRecord::Base
     end
   end
 
-  def fix_image_source(src, skin_root,public_theme_path)
+  def fix_image_source(src, skin_root, public_theme_path)
     match = src.match(/(\.\.\/)*(images\/)?(.*)/)
     image_without_img_prefix = match[3]
     img = Image.find_by_title(image_without_img_prefix.gsub(/\//, DIRECTORY_SEPARATOR))
     new_src = nil
     if img && img.asset then
       new_src = img.asset.url(:original, false)
-    elsif File.exist?(File.join(skin_root, "public","images", image_without_img_prefix))
-      new_src = File.join(public_theme_path.gsub(Rails.public_path,''),'images', image_without_img_prefix)
+    elsif File.exist?(File.join(skin_root, "public", "images", image_without_img_prefix))
+      new_src = File.join(public_theme_path.gsub(Rails.public_path, ''), 'images', image_without_img_prefix)
     end
     (new_src) ? new_src : src
   end
@@ -102,13 +102,13 @@ class Skin < ActiveRecord::Base
 
     # copy public stuff to public themes folder
 
-    FileUtils.cp_r File.join(skin_root,"public/."), public_theme_path
+    FileUtils.cp_r File.join(skin_root, "public/."), public_theme_path
 
     # Add Skin images to assets
-    Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do  |image|
+    Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do |image|
       img_name = ((image.gsub(/^(.*)#{skin_name}\/images\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
-      new_filename =  File.join(File.dirname(image),img_name)
-      FileUtils.mv image , new_filename if image != new_filename
+      new_filename =  File.join(File.dirname(image), img_name)
+      FileUtils.mv image, new_filename if image != new_filename
       img = File.open(new_filename, "r")
       asset = Image.new
       asset.asset = img
@@ -141,8 +141,8 @@ class Skin < ActiveRecord::Base
       # url(../images/background-2.jpg)
       # 3 =>  background-2.jpg
 
-      style_content = style_content.gsub(/url\((.*)\)/) { |match|
-        "url(#{fix_image_source($1, skin_root,public_theme_path)})"
+      style_content = style_content.gsub(/url\(['"]?([\w\.\/-]*)['"]?\)/) { |match|
+        "url(#{fix_image_source($1, skin_root, public_theme_path)})"
       }
       style = Stylesheet.find_or_initialize_by_name(
               :name => "#{skin_name}-#{style_name}",
@@ -187,16 +187,29 @@ class Skin < ActiveRecord::Base
       #FIXXME: this is hardcoded for the moment
 
       doc = Hpricot(layout_content)
+
+      all_js = Array.new
       doc.search('script').each do |js|
-        if js.attributes['src'] && !js.attributes['ignore'] then
+        if js.attributes['src'] then
           tag = js.attributes['src']
           tag = tag.gsub("js/", '')
           javascript = Javascript.find_by_name("#{skin_name}-#{tag}")
           js.attributes["src"] = javascript.url if javascript
-        end
+          all_js << javascript if javascript
+        end unless js.attributes['ignore'] && js.attributes['ignore'].match(/true/)
       end
 
+      js = Javascript.find_or_initialize_by_name(
+              :name => "#{skin_name}-all-js-#{layout_name}",
+              :content => (all_js.map { |js| "<r:javascript name=\"#{js.name}\" as=\"content\" />" }).join("\n"),
+              :site_id => site.id,
+              :created_by_id => user.id,
+              :skin => true
+      )
+      js.save!
+
       doc = Hpricot(doc.to_s)
+      all_css = Array.new
       doc.search('link').each do |css|
         if css.attributes['href'] && css.attributes['rel'].match(/stylesheet/) then
           tag = css.attributes['href']
@@ -204,13 +217,24 @@ class Skin < ActiveRecord::Base
           tag = tag.gsub("styles/", "styles#{DIRECTORY_SEPARATOR}")
           stylesheet = Stylesheet.find_by_name("#{skin_name}-#{tag}")
           css.attributes["href"] = stylesheet.url if stylesheet
+          all_css << stylesheet if stylesheet
         end
       end
+
+      style = Stylesheet.find_or_initialize_by_name(
+              :name => "#{skin_name}-all-css-#{layout_name}",
+              :content => (all_css.map { |css| "<r:stylesheet name=\"#{css.name}\" as=\"content\" />" }).join("\n"),
+              :site_id => site.id,
+              :created_by_id => user.id,
+              :skin => true
+      )
+      style.save!
+
 
       doc = Hpricot(doc.to_s)
       doc.search('img').each do |image|
         if image.attributes['src'] then
-          image.attributes["src"] = fix_image_source(image.attributes['src'], skin_root,public_theme_path)
+          image.attributes["src"] = fix_image_source(image.attributes['src'], skin_root, public_theme_path)
         end
       end
 
