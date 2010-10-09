@@ -6,6 +6,7 @@ require 'hpricot'
 class Skin < ActiveRecord::Base
 
   DIRECTORY_SEPARATOR = "-__-"
+  PUBLIC_THEMES_ROOT = Rails.public_path, "system", "themes"
 
   has_attached_file :image, :styles => {:thumb => "100x100", :small => "200x200", :medium => "300x300", :large => "500x500"}
   has_attached_file :archive, :path => ":rails_root/lib/:class/:attachment/:id/:basename.:extension", :url => ":rails_root/lib/:class/:attachment/:id/:basename.:extension"
@@ -48,7 +49,25 @@ class Skin < ActiveRecord::Base
     end
   end
 
-  # Activate Skin on user's site.  
+  def fix_image_source(src, skin_root,public_theme_path)
+    match = src.match(/(\.\.\/)*(images\/)?(.*)/)
+    image_without_img_prefix = match[3]
+    img = Image.find_by_title(image_without_img_prefix.gsub(/\//, DIRECTORY_SEPARATOR))
+    new_src = nil
+    if img && img.asset then
+      new_src = img.asset.url(:original, false)
+    elsif File.exist?(File.join(skin_root, "public","images", image_without_img_prefix))
+      new_src = File.join(public_theme_path.gsub(Rails.public_path,''),'images', image_without_img_prefix)
+    end
+    (new_src) ? new_src : src
+  end
+
+  def calc_public_theme_path(site, skin_name)
+    public_theme_path = File::join PUBLIC_THEMES_ROOT, site.id.to_s, skin_name
+    public_theme_path
+  end
+
+  # Activate Skin on user's site.
   #----------------------------------------------------------------------------
   def activate_on(site, user)
 
@@ -75,6 +94,15 @@ class Skin < ActiveRecord::Base
       FileUtils.mkdir_p(File.dirname(fpath))
       skin_zip.extract(e, fpath)
     }
+
+    # create a new folder for public assets
+
+    public_theme_path = calc_public_theme_path(site, skin_name)
+    FileUtils.mkdir_p(File.dirname(public_theme_path))
+
+    # copy public stuff to public themes folder
+
+    FileUtils.cp_r File.join(skin_root,"public/."), public_theme_path
 
     # Add Skin images to assets
     Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do  |image|
@@ -110,13 +138,11 @@ class Skin < ActiveRecord::Base
 
       # url(blue-glossy/background-2.jpg)
       # 3 =>  blue-glossy/background-2.jpg
-      # url(../image/background-2.jpg)
+      # url(../images/background-2.jpg)
       # 3 =>  background-2.jpg
 
-      style_content = style_content.gsub(/url\((\.\.\/)*(images\/)?(.*)\)/) { |match|
-        img = Image.find_by_title($3.gsub(/\//, DIRECTORY_SEPARATOR))
-        url = (img && img.asset) ? img.asset.url(:original,false) : $3
-        "url(#{url})"
+      style_content = style_content.gsub(/url\((.*)\)/) { |match|
+        "url(#{fix_image_source($1, skin_root,public_theme_path)})"
       }
       style = Stylesheet.find_or_initialize_by_name(
               :name => "#{skin_name}-#{style_name}",
@@ -184,10 +210,7 @@ class Skin < ActiveRecord::Base
       doc = Hpricot(doc.to_s)
       doc.search('img').each do |image|
         if image.attributes['src'] then
-          src = image.attributes['src']
-          img = Image.find_by_title(src.gsub(/(\.\.\/)*images\//,'').gsub(/\//, DIRECTORY_SEPARATOR))
-          new_src = (img && img.asset) ? img.asset.url(:original,false) : src
-          image.raw_attributes = image.attributes.merge("src" => new_src) if img
+          image.raw_attributes = image.attributes.merge("src" => fix_image_source(image.attributes['src'], skin_root,public_theme_path))
         end
       end
 
@@ -382,6 +405,9 @@ class Skin < ActiveRecord::Base
     assets.each { |asset|
       Image.destroy(asset.id)
     }
+
+    FileUtils.rm_rf(calc_public_theme_path(site, self.name)) if File.exist?(calc_public_theme_path(site, self.name))
+
 
     Layout.delete_all(["site_id = ? AND skin_layout = ?", site.id, true])
 
