@@ -267,6 +267,28 @@ class Skin < ActiveRecord::Base
 
     end
 
+    Dir.glob("#{skin_root}/forms/*.{yml}").each do |form_config_file|
+      form_config = YAML::load_file(form_config_file)
+      form_parts_path = File.join(File.dirname(form_config_file),File.basename(form_config_file,".yml"))
+
+      [:body,:content,:config].each do |part|
+        File.exist?(File.join(form_parts_path,part.to_s)) ? form_config[part] = File.read(part_file = File.join(form_parts_path,part.to_s)) : "no inputfile #{part_file}"
+      end
+
+      form = Form.find_or_initialize_by_title(
+              :title => form_config[:title] || "No Title given #{self.id}" ,
+              :action => form_config[:action],
+              :redirect_to => form_config[:redirect_to],
+              :config => form_config[:config],
+              :body => form_config[:body],
+              :content => form_config[:content],
+              :site_id => site.id,
+              :skin =>  true
+      )
+
+      form.save!
+
+    end
 
 #
 #
@@ -437,7 +459,7 @@ class Skin < ActiveRecord::Base
 
     Snippet.delete_all(["site_id = ? AND skin_snippet = ?", site.id, true])
     TextAsset.delete_all(["site_id = ? AND skin = ?", site.id, true])
-
+    Form.delete_all(["site_id = ? AND skin = ?", site.id, true])
 
     # Site no longer has this skin.
     self.sites.delete(site)
