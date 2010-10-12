@@ -309,25 +309,8 @@ class Skin < ActiveRecord::Base
 #    homepage.skin_page = true
 #    homepage.save!
 #
-#    stylesheet.title = "style.css"
-#    stylesheet.layout_id = style.id
-#    stylesheet.slug = 'style.css'
-#    stylesheet.breadcrumb = "style.css"
-#    stylesheet.description = ''
-#    stylesheet.keywords = ''
-#    stylesheet.created_by_id = user.id
-#    stylesheet.status_id = 100
-#    stylesheet.site_id = site.id
-#    stylesheet.parent_id = homepage.id
-#    stylesheet.skin_page = true
-#    stylesheet.save!
-#
-#    # Create a empty stylesheet named "style" for skin style overrides, etc.
-#    PagePart.create!(
-#            :name => 'body',
-#            :content => "",
-#            :page_id => stylesheet.id
-#    )
+
+
 #
 #
 #    # Create the page parts
