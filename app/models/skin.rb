@@ -163,7 +163,7 @@ class Skin < ActiveRecord::Base
     homepage.layout_id = Layout.first.id
     homepage.slug = (root_page) ? "#{skin_name}" : "/"
     homepage.breadcrumb = "Theme Home"
-    homepage.description = ''
+    homepage.description = 'ignore_export'
     homepage.keywords = ''
     homepage.created_by_id = user.id
     homepage.status_id = 100
@@ -241,13 +241,16 @@ class Skin < ActiveRecord::Base
       layout.content = doc.to_s
       layout.save!
 
+      #set root page to standard layout
+      root_page.layout = Layout.find_by_name("#{skin_name}-standard")
+      root_page.save!
 
       page = Page.find_or_initialize_by_slug(
               :title => "Layout #{layout_name} Examples",
               :layout_id => layout.id,
               :slug => layout_name,
               :breadcrumb => layout_name,
-              :description => '',
+              :description => 'ignore_export',
               :keywords => '',
               :created_by_id => user.id,
               :status_id => 100,
@@ -311,55 +314,21 @@ class Skin < ActiveRecord::Base
 #
 
 
-#
-#
-#    # Create the page parts
-#    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/parts") { |part|
-#      next if part == '.'
-#      next if part == '..'
-#      File.open("#{extract_point}/#{site.id.to_s}/#{skin_name}/parts/#{part}", "r") do |file|
-#        contents = ""
-#        while line = file.gets
-#          if line =~ /(<r:assets:.+\/>)/
-#            line = insert_asset_url(line, site.id)
-#          end
-#          contents << line
-#        end
-#
-#        part = PagePart.new(
-#                :name => part.chomp(File.extname(part)),
-#                :content => contents,
-#                :page_id => homepage.id,
-#                :skin_page_part =>  true
-#        )
-#        part.save!
-#      end
-#    }
-#
-#    # Create page snippets
-#    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets") { |snippet|
-#      next if snippet == '.'
-#      next if snippet == '..'
-#      File.open("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets/#{snippet}", "r") do |file|
-#        contents = ""
-#        while line = file.gets
-#          if line =~ /(<r:assets:.+\/>)/
-#            line = insert_asset_url(line, site.id)
-#          end
-#          line.gsub!(/\{site_id\}/, site.id.to_s)
-#          contents << line
-#        end
-#
-#        snippet = Snippet.new(
-#                :name => snippet.chomp(File.extname(snippet)),
-#                :content => contents,
-#                :site_id => site.id,
-#                :created_by_id => user.id,
-#                :skin_snippet => true
-#        )
-#        snippet.save!
-#      end
-#    }
+    # Create page snippets
+    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets") { |snippet|
+      next if snippet == '.'
+      next if snippet == '..'
+
+        snippet = Snippet.find_or_initialize_by_name(
+                :name => snippet.chomp(File.extname(snippet)),
+                :content => File.read("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets/#{snippet}"),
+                :site_id => site.id,
+                :created_by_id => user.id,
+                :skin_snippet => true
+        )
+        snippet.save!
+
+    }
 #
 #    # Create default pages.
 #    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/pages") { |page|
