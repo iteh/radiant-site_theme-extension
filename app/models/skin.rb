@@ -465,7 +465,7 @@ class Skin < ActiveRecord::Base
       page.created_by_id = user.id
       page.save!
       base_name =  File.basename(page_config_file,".yml")
-      filter_extensions_regexp = (TextFilter.descendants.map{|filter| filter.filter_name.downcase} << "html").join('|')
+
       Dir.glob("#{path}/#{base_name}_parts/*.yml").each do |part_config_file|
         part_config = YAML::load_file(part_config_file)
         part_config["page_id"] = page.id
@@ -475,6 +475,19 @@ class Skin < ActiveRecord::Base
         page_part.content = File.read(File.join(File.dirname(part_config_file),part_content_file))
         page_part.save!
       end
+      images_path = "#{path}/#{base_name}_images"
+      if File.directory?(images_path)
+        images = YAML.load_file(File.join(images_path,"images.yml"))
+        images.each do |image|
+          attachment = PageAttachment.new
+          attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image["file"]),image["mime_type"])
+          attachment.site_id = site.id
+          attachment.title = image["file"]
+          attachment.save!
+          page.attachments <<  attachment
+        end
+      end
+      page.save!
 
       recursive_page_import("#{path}/#{base_name}_children",page,site,user) if File.directory?("#{path}/#{base_name}_children")
     end
