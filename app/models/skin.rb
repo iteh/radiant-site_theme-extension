@@ -102,7 +102,7 @@ class Skin < ActiveRecord::Base
 
     # copy public stuff to public themes folder
 
-    FileUtils.cp_r File.join(skin_root, "public/."), public_theme_path
+    FileUtils.cp_r File.join(skin_root, "public/."), public_theme_path if File.directory?(File.join(skin_root, "public"))
 
     # Add Skin images to assets
     Dir.glob("#{skin_root}/images/**/**/*.{jpg,png,gif}").each do |image|
@@ -119,11 +119,11 @@ class Skin < ActiveRecord::Base
       asset.save!
     end
 
-    Dir.glob("#{skin_root}/javascripts/**/*.{js}").each do |file_name|
+    Dir.glob("#{skin_root}/javascripts/**/*").each do |file_name|
       js_name = ((file_name.gsub(/^(.*)#{skin_name}\/javascripts\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
       js_content = File.read(file_name)
       js = Javascript.find_or_initialize_by_name(
-              :name => "#{skin_name}-#{js_name}",
+              :name => js_name,
               :content => js_content,
               :site_id => site.id,
               :created_by_id => user.id,
@@ -132,8 +132,8 @@ class Skin < ActiveRecord::Base
       js.save!
     end
 
-    Dir.glob("#{skin_root}/styles/**/*.{css}").each do |file_name|
-      style_name = ((file_name.gsub(/^(.*)#{skin_name}\/styles\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
+    Dir.glob("#{skin_root}/stylesheets/**/*").each do |file_name|
+      style_name = ((file_name.gsub(/^(.*)#{skin_name}\/stylesheets\//, '')).gsub(/\//, DIRECTORY_SEPARATOR))
       style_content = File.read(file_name)
 
       # url(blue-glossy/background-2.jpg)
@@ -141,11 +141,11 @@ class Skin < ActiveRecord::Base
       # url(../images/background-2.jpg)
       # 3 =>  background-2.jpg
 
-      style_content = style_content.gsub(/url\(['"]?([\w\.\/-]*)['"]?\)/) { |match|
-        "url(#{fix_image_source($1, skin_root, public_theme_path)})"
-      }
+#      style_content = style_content.gsub(/url\(['"]?([\w\.\/-]*)['"]?\)/) { |match|
+#        "url(#{fix_image_source($1, skin_root, public_theme_path)})"
+#      }
       style = Stylesheet.find_or_initialize_by_name(
-              :name => "#{skin_name}-#{style_name}",
+              :name => style_name,
               :content => style_content,
               :site_id => site.id,
               :created_by_id => user.id,
@@ -155,136 +155,137 @@ class Skin < ActiveRecord::Base
     end
 
     # Create a default skin-homepage
-    homepage = Page.new
+#    homepage = Page.new
 
-    root_page = Page.find(:first, :conditions => ["site_id = ? AND slug = ?", site.id, "/"])
 
-    homepage.title = "Theme #{skin_name} Examples"
-    homepage.layout_id = Layout.first.id
-    homepage.slug = (root_page) ? "#{skin_name}" : "/"
-    homepage.breadcrumb = "Theme Home"
-    homepage.description = 'ignore_export'
-    homepage.keywords = ''
-    homepage.created_by_id = user.id
-    homepage.status_id = 100
-    homepage.site_id = site.id
-    homepage.parent_id = root_page.id if root_page
-    homepage.skin_page = true
-    homepage.save!
-
-    Dir.glob("#{skin_root}/layouts/**/*.{html}").each do |file_name|
-      layout_name = ((file_name.gsub(/^(.*)#{skin_name}\/layouts\//, '')).gsub(/\//, DIRECTORY_SEPARATOR)).split('.').first
-      layout_content = File.read(file_name)
+    Dir.glob("#{skin_root}/layouts/**/*.{yml}").each do |file_name|
+      #layout_name = ((file_name.gsub(/^(.*)#{skin_name}\/layouts\//, '')).gsub(/\//, DIRECTORY_SEPARATOR)).split('.').first
+      layout_config = YAML::load_file(file_name)
+      layout_content = File.read(file_name.gsub(".yml",""))
 
       layout = Layout.find_or_initialize_by_name(
-              :name => "#{skin_name}-#{layout_name}",
+              :name => layout_config["name"],
               :content => layout_content,
               :site_id => site.id,
               :created_by_id => user.id,
+              :content_type => layout_config["content_type"],
               :skin_layout => true
       )
 
-      #FIXXME: this is hardcoded for the moment
+#FIXXME: this is hardcoded for the moment
+# FIXXXXMEEEE : move this to a converter to unclutter the themes import
+#      doc = Hpricot(layout_content)
+#
+#      all_js = Array.new
+#      doc.search('script').each do |js|
+#        if js.attributes['src'] then
+#          tag = js.attributes['src']
+#          tag = tag.gsub("js/", '')
+#          javascript = Javascript.find_by_name("#{skin_name}-#{tag}")
+#          js.attributes["src"] = javascript.url if javascript
+#          all_js << javascript if javascript
+#        end unless js.attributes['ignore'] && js.attributes['ignore'].match(/true/)
+#      end
+#
+#      js = Javascript.find_or_initialize_by_name(
+#              :name => "#{skin_name}-all-js-#{layout_name}",
+#              :content => (all_js.map { |js| "<r:javascript name=\"#{js.name}\" as=\"content\" />" }).join("\n"),
+#              :site_id => site.id,
+#              :created_by_id => user.id,
+#              :skin => true
+#      )
+#      js.save!
+#
+#      doc = Hpricot(doc.to_s)
+#      all_css = Array.new
+#      doc.search('link').each do |css|
+#        if css.attributes['href'] && css.attributes['rel'].match(/stylesheet/) then
+#          tag = css.attributes['href']
+#          tag = tag.gsub("css/", '')
+#          tag = tag.gsub("styles/", "styles#{DIRECTORY_SEPARATOR}")
+#          stylesheet = Stylesheet.find_by_name("#{skin_name}-#{tag}")
+#          css.attributes["href"] = stylesheet.url if stylesheet
+#          all_css << stylesheet if stylesheet
+#        end
+#      end
+#
+#      style = Stylesheet.find_or_initialize_by_name(
+#              :name => "#{skin_name}-all-css-#{layout_name}",
+#              :content => (all_css.map { |css| "<r:stylesheet name=\"#{css.name}\" as=\"content\" />" }).join("\n"),
+#              :site_id => site.id,
+#              :created_by_id => user.id,
+#              :skin => true
+#      )
+#      style.save!
 
-      doc = Hpricot(layout_content)
 
-      all_js = Array.new
-      doc.search('script').each do |js|
-        if js.attributes['src'] then
-          tag = js.attributes['src']
-          tag = tag.gsub("js/", '')
-          javascript = Javascript.find_by_name("#{skin_name}-#{tag}")
-          js.attributes["src"] = javascript.url if javascript
-          all_js << javascript if javascript
-        end unless js.attributes['ignore'] && js.attributes['ignore'].match(/true/)
-      end
+#      doc = Hpricot(doc.to_s)
+#      doc.search('img').each do |image|
+#        if image.attributes['src'] then
+#          image.attributes["src"] = fix_image_source(image.attributes['src'], skin_root, public_theme_path)
+#        end
+#      end
 
-      js = Javascript.find_or_initialize_by_name(
-              :name => "#{skin_name}-all-js-#{layout_name}",
-              :content => (all_js.map { |js| "<r:javascript name=\"#{js.name}\" as=\"content\" />" }).join("\n"),
-              :site_id => site.id,
-              :created_by_id => user.id,
-              :skin => true
-      )
-      js.save!
-
-      doc = Hpricot(doc.to_s)
-      all_css = Array.new
-      doc.search('link').each do |css|
-        if css.attributes['href'] && css.attributes['rel'].match(/stylesheet/) then
-          tag = css.attributes['href']
-          tag = tag.gsub("css/", '')
-          tag = tag.gsub("styles/", "styles#{DIRECTORY_SEPARATOR}")
-          stylesheet = Stylesheet.find_by_name("#{skin_name}-#{tag}")
-          css.attributes["href"] = stylesheet.url if stylesheet
-          all_css << stylesheet if stylesheet
-        end
-      end
-
-      style = Stylesheet.find_or_initialize_by_name(
-              :name => "#{skin_name}-all-css-#{layout_name}",
-              :content => (all_css.map { |css| "<r:stylesheet name=\"#{css.name}\" as=\"content\" />" }).join("\n"),
-              :site_id => site.id,
-              :created_by_id => user.id,
-              :skin => true
-      )
-      style.save!
-
-
-      doc = Hpricot(doc.to_s)
-      doc.search('img').each do |image|
-        if image.attributes['src'] then
-          image.attributes["src"] = fix_image_source(image.attributes['src'], skin_root, public_theme_path)
-        end
-      end
-
-      layout.content = doc.to_s
+#      layout.content = doc.to_s
       layout.save!
 
       #set root page to standard layout
-      root_page.layout = Layout.find_by_name("#{skin_name}-standard")
-      root_page.save!
+#      root_page.layout = Layout.find_by_name("#{skin_name}-standard")
+#      root_page.save!
 
-      page = Page.find_or_initialize_by_slug(
-              :title => "Layout #{layout_name} Examples",
-              :layout_id => layout.id,
-              :slug => layout_name,
-              :breadcrumb => layout_name,
-              :description => 'ignore_export',
-              :keywords => '',
-              :created_by_id => user.id,
-              :status_id => 100,
-              :site_id => site.id,
-              :parent_id => homepage.id,
-              :skin_page => true
-      )
-      page.save!
-
-      part = PagePart.new(
-              :name => "body",
-              :content => "Example text",
-              :page_id => page.id,
-              :skin_page_part =>  true
-      )
-      part.save!
+#      page = Page.find_or_initialize_by_slug(
+#              :title => "Layout #{layout_name} Examples",
+#              :layout_id => layout.id,
+#              :slug => layout_name,
+#              :breadcrumb => layout_name,
+#              :description => 'ignore_export',
+#              :keywords => '',
+#              :created_by_id => user.id,
+#              :status_id => 100,
+#              :site_id => site.id,
+#              :parent_id => homepage.id,
+#              :skin_page => true
+#      )
+#      page.save!
+#
+#      part = PagePart.new(
+#              :name => "body",
+#              :content => "Example text",
+#              :page_id => page.id,
+#              :skin_page_part =>  true
+#      )
+#      part.save!
 
     end
+
+#    root_page_config_file = Dir.glob("#{skin_root}/pages/*.{yml}").first
+#    root_page_config = YAML::load_file(root_page_config_file)
+#    page_class = (root_page_config["class_name"] && !root_page_config["class_name"].empty?) ?  root_page_config["class_name"] : "Page"
+#    root_layout = Layout.find_by_name(root_page_config.delete("layout_name")) if root_page_config["layout_name"]
+#    root_page = page_class.constantize.find_or_initialize_by_slug(root_page_config)
+#    root_page.update_attributes(root_page_config)
+#    root_page.layout = root_layout if root_layout
+#    root_page.save!
+
+#    child_path =  "#{skin_root}/pages/#{File.basename(root_page_config_file,".yml")}_children"
+    recursive_page_import("#{skin_root}/pages",nil,site,user)
+
 
     Dir.glob("#{skin_root}/forms/*.{yml}").each do |form_config_file|
       form_config = YAML::load_file(form_config_file)
       form_parts_path = File.join(File.dirname(form_config_file),File.basename(form_config_file,".yml"))
 
-      [:body,:content,:config].each do |part|
+      %w{body content config}.each do |part|
         File.exist?(File.join(form_parts_path,part.to_s)) ? form_config[part] = File.read(part_file = File.join(form_parts_path,part.to_s)) : "no inputfile #{part_file}"
       end
 
       form = Form.find_or_initialize_by_title(
-              :title => form_config[:title] || "No Title given #{self.id}" ,
-              :action => form_config[:action],
-              :redirect_to => form_config[:redirect_to],
-              :config => form_config[:config],
-              :body => form_config[:body],
-              :content => form_config[:content],
+              :title => form_config["title"] || "No Title given #{self.id}" ,
+              :action => form_config["action"],
+              :redirect_to => form_config["redirect_to"],
+              :config => form_config["config"],
+              :body => form_config["body"],
+              :content => form_config["content"],
               :site_id => site.id,
               :skin =>  true
       )
@@ -315,20 +316,18 @@ class Skin < ActiveRecord::Base
 
 
     # Create page snippets
-    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets") { |snippet|
-      next if snippet == '.'
-      next if snippet == '..'
-
+    Dir.glob("#{skin_root}/snippets/**/*").each do  |file|
+        filter_extensions_regexp = (TextFilter.descendants.map{|filter| filter.filter_name.downcase} << "html").join('|')
         snippet = Snippet.find_or_initialize_by_name(
-                :name => snippet.chomp(File.extname(snippet)),
-                :content => File.read("#{extract_point}/#{site.id.to_s}/#{skin_name}/snippets/#{snippet}"),
+                :name => File.basename(file).gsub(/\.(#{filter_extensions_regexp})/,"").strip,
+                :content => File.read(file),
                 :site_id => site.id,
                 :created_by_id => user.id,
                 :skin_snippet => true
         )
         snippet.save!
 
-    }
+    end
 #
 #    # Create default pages.
 #    Dir.foreach("#{extract_point}/#{site.id.to_s}/#{skin_name}/pages") { |page|
@@ -452,4 +451,32 @@ class Skin < ActiveRecord::Base
     str.slice!(1, str.length)
   end
 
+  def recursive_page_import(path,parent,site,user)
+    Dir.glob("#{path}/*.{yml}").each do |page_config_file|
+      page_config = YAML::load_file(page_config_file)
+      layout = Layout.find_by_name(page_config.delete("layout_name")) if page_config["layout_name"]
+      page_class = (page_config["class_name"] && !page_config["class_name"].empty?) ?  page_config["class_name"] : "Page"
+      page = page_class.constantize.find_or_initialize_by_slug(page_config)
+      page.layout = layout if layout
+      page.parent = parent if parent
+      page.site_id = site.id
+      page.status = Status[:published] unless page_config["status_id"]
+      page.published_at = Time.now unless page_config["published_at"]
+      page.created_by_id = user.id
+      page.save!
+      base_name =  File.basename(page_config_file,".yml")
+      filter_extensions_regexp = (TextFilter.descendants.map{|filter| filter.filter_name.downcase} << "html").join('|')
+      Dir.glob("#{path}/#{base_name}_parts/*.yml").each do |part_config_file|
+        part_config = YAML::load_file(part_config_file)
+        part_config["page_id"] = page.id
+        page_part = PagePart.find_or_initialize_by_page_id_and_name(part_config)
+        part_content_file_extension = part_config["filter_id"].empty? ? "html" : part_config["filter_id"].downcase
+        part_content_file = File.basename(part_config_file,"yml")+part_content_file_extension
+        page_part.content = File.read(File.join(File.dirname(part_config_file),part_content_file))
+        page_part.save!
+      end
+
+      recursive_page_import("#{path}/#{base_name}_children",page,site,user) if File.directory?("#{path}/#{base_name}_children")
+    end
+  end
 end
