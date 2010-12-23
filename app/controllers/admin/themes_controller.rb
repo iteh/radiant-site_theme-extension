@@ -1,5 +1,11 @@
 require 'fileutils'
 class Admin::ThemesController < ApplicationController
+
+  only_allow_access_to :index, :show, :new, :create, :edit, :update, :remove, :destroy, :activate, :deactivate,
+    :when => [ :admin ],
+    :denied_url => { :controller => 'admin/pages', :action => 'index' },
+    :denied_message => 'You must have admin privileges to perform this action.'
+
 	def index
     @skins = Skin.paginate :page => params[:page] || 1, :per_page => 12, :order => 'name ASC'
 	end	

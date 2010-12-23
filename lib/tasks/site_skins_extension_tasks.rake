@@ -57,7 +57,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','pages')
+        export_path = build_export_path('pages')
         root_page = Page.find(:first, :conditions => ["site_id = ? AND slug = ?", ENV['SITE_ID'], "/"])
         recursive_dump(export_path, root_page)
       end
@@ -67,7 +67,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','snippets')
+        export_path = build_export_path('snippets')
         FileUtils.mkdir_p export_path
         Snippet.find(:all,:conditions => ["site_id = ? ", ENV['SITE_ID']]).each do |snippet|
           puts "exporting #{snippet.name}"
@@ -84,7 +84,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','stylesheets')
+        export_path = build_export_path('stylesheets')
         FileUtils.mkdir_p export_path
         Stylesheet.find(:all,:conditions => ["site_id = ? ", ENV['SITE_ID']]).each do |stylesheet|
           puts "exporting #{stylesheet.name}"
@@ -100,7 +100,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','javascripts')
+        export_path = build_export_path('javascripts')
         FileUtils.mkdir_p export_path
         Javascript.find(:all,:conditions => ["site_id = ? ", ENV['SITE_ID']]).each do |javascript|
           puts "exporting #{javascript.name}"
@@ -117,7 +117,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','forms')
+        export_path = build_export_path('forms')
         FileUtils.mkdir_p export_path
         Form.find(:all,:conditions => ["site_id = ? ", ENV['SITE_ID']]).each do |form|
           puts "exporting #{form.title}"
@@ -140,7 +140,7 @@ namespace :radiant do
         require 'highline/import'
         say "ERROR: you must specify a SITE_ID #{ENV['SITE_ID']}" and exit if !ENV['SITE_ID']
 
-        export_path = ENV['EXPORT_PATH'] ? ENV['EXPORT_PATH'] : File::join(RAILS_ROOT, 'tmp', 'export','layouts')
+        export_path = build_export_path('layouts')
         FileUtils.mkdir_p export_path
         Layout.find(:all,:conditions => ["site_id = ? ", ENV['SITE_ID']]).each do |layout|
           puts "exporting #{layout.name}"
@@ -164,5 +164,20 @@ namespace :radiant do
         Rake::Task['radiant:extensions:site_theme:export_snippets'].execute
       end
     end
+  end
+
+  def build_export_path(path)
+    result_path = File::join(RAILS_ROOT, 'tmp', 'export',path)
+    if ENV['EXPORT_PATH']
+      export_path = Pathname.new(ENV['EXPORT_PATH'])
+      if export_path.absolute?
+        result_path = File::join(export_path,path)
+      else
+        result_path =  File::join(RAILS_ROOT, export_path,path)
+      end
+    else
+      result_path =  File::join(RAILS_ROOT, 'tmp', 'export',path)
+    end
+    result_path
   end
 end
