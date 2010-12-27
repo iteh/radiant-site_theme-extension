@@ -1,8 +1,11 @@
+require 'rio'
+require 'highline'
+
 def recursive_dump(export_path, page)
   FileUtils.mkdir_p export_path
   unless page.description && page.description.match(/ignore_export/)
     puts "exporting #{page.title}"
-    recursive_path = File::join(export_path, page.title.parameterize)
+    recursive_path = File::join(export_path, page.slug.match(/^\/$/) ? "root" : page.slug.parameterize)
     File.open("#{recursive_path}.yml", 'w') do |out|
       page_hash = page.attributes.reject{|key,value| %w{ layout_id parent_id virtual position delta published_at status_id lock_version updated_by_id created_at updated_at skin_page site_id id created_by_id}.include?(key)}
       page_hash["layout_name"] = page.layout.name if page.layout_id
@@ -20,6 +23,28 @@ def recursive_dump(export_path, page)
         out.write(part.content)
       end
     end
+    attachments = Array.new
+    attachments_path =  "#{recursive_path}_attachments"
+    FileUtils.mkdir_p attachments_path
+
+    page.attachments.each do |attachment|
+        begin
+          attachment_source = File.join(RAILS_ROOT,public,attachment.public_filename)
+          attachment_destination = File.join(attachments_path,attachment.filename)
+          rio(attachment_source) > rio(attachment_destination)
+          attachment_meta = {
+              "mime_type" => attachment.content_type,
+              'file' => attachment.filename,
+              "title" => attachment.title,
+              "description" => attachment.description
+          }
+          attachments << attachment_meta
+        rescue
+          print "An error occurred: ",$!, "\n"
+        end
+      end
+      rio(File.join(attachments_path,"attachments.yml")) < attachments.to_yaml
+
     page.children.each do |child|
       recursive_dump("#{recursive_path}_children", child)
     end
@@ -156,6 +181,18 @@ namespace :radiant do
 
       desc "export site, use SITE_ID and EXPORT_PATH to specify options"
       task :export_site => :environment do
+        result = nil
+         ui = HighLine.new
+       ui.choose do |menu|
+            menu.prompt = "Please choose your site to export"
+            menu.select_by =  :index_or_name
+
+            Site.all.each do |site|
+              menu.choice(site.title.to_sym) { |choice|
+                ENV['SITE_ID'] = (Site.all.select { |s| s.title.to_sym == choice}).first.id.to_s
+              }
+            end
+       end
         Rake::Task['radiant:extensions:site_theme:export_stylesheets'].execute
         Rake::Task['radiant:extensions:site_theme:export_javascripts'].execute
         Rake::Task['radiant:extensions:site_theme:export_layouts'].execute

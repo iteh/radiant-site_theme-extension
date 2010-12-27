@@ -475,16 +475,25 @@ class Skin < ActiveRecord::Base
         page_part.content = File.read(File.join(File.dirname(part_config_file),part_content_file))
         page_part.save!
       end
-      images_path = "#{path}/#{base_name}_images"
+      images_path = "#{path}/#{base_name}_attachments"
       if File.directory?(images_path)
-        images = YAML.load_file(File.join(images_path,"images.yml"))
+        all_attachments = Dir.glob("#{images_path}/*").reject{|x| x.match(/yml$/)}.map{|file| File.basename(file)}
+        images = YAML.load_file(File.join(images_path,"attachments.yml"))
         images.each do |image|
           attachment = PageAttachment.new
           attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image["file"]),image["mime_type"])
           attachment.site_id = site.id
           attachment.title = image["file"]
+          attachment.description = image["description"]
           attachment.save!
+          all_attachments.delete_if{|element| element["file"] == image["file"]}
           page.attachments <<  attachment
+        end
+        all_attachments.each do |image|
+          attachment = PageAttachment.new
+          attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image),`file -ib #{images_path}#/{image}`.gsub(/\n/,"").split(';').first)
+          attachment.site_id = site.id
+          attachment.title = image
         end
       end
       page.save!
