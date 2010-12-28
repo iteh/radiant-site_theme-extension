@@ -491,9 +491,13 @@ class Skin < ActiveRecord::Base
         end
         all_attachments.each do |image|
           attachment = PageAttachment.new
-          attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image),`file -ib #{images_path}#/{image}`.gsub(/\n/,"").split(';').first)
+          attachment_file = File.join(images_path,image)
+          attachment_mime_type = `file -ib #{attachment_file}`.gsub(/\n/,"").split(';').first
+          attachment.uploaded_data = ActionController::TestUploadedFile.new(attachment_file,attachment_mime_type)
           attachment.site_id = site.id
           attachment.title = image
+          attachment.save!
+          page.attachments <<  attachment
         end
       end
       page.save!
