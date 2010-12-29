@@ -478,16 +478,18 @@ class Skin < ActiveRecord::Base
       images_path = "#{path}/#{base_name}_attachments"
       if File.directory?(images_path)
         all_attachments = Dir.glob("#{images_path}/*").reject{|x| x.match(/yml$/)}.map{|file| File.basename(file)}
-        images = YAML.load_file(File.join(images_path,"attachments.yml"))
-        images.each do |image|
-          attachment = PageAttachment.new
-          attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image["file"]),image["mime_type"])
-          attachment.site_id = site.id
-          attachment.title = image["file"]
-          attachment.description = image["description"]
-          attachment.save!
-          all_attachments.delete_if{|element| element["file"] == image["file"]}
-          page.attachments <<  attachment
+        if File.exists?(File.join(images_path,"attachments.yml"))
+          images = YAML.load_file(File.join(images_path,"attachments.yml"))
+          images.each do |image|
+            attachment = PageAttachment.new
+            attachment.uploaded_data = ActionController::TestUploadedFile.new(File.join(images_path,image["file"]),image["mime_type"])
+            attachment.site_id = site.id
+            attachment.title = image["file"]
+            attachment.description = image["description"]
+            attachment.save!
+            all_attachments.delete_if{|element| element["file"] == image["file"]}
+            page.attachments <<  attachment
+          end
         end
         all_attachments.each do |image|
           attachment = PageAttachment.new
