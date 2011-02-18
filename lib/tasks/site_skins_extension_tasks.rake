@@ -29,8 +29,9 @@ def recursive_dump(export_path, page)
 
     page.attachments.each do |attachment|
         begin
-          attachment_source = File.join(RAILS_ROOT,public,attachment.public_filename)
+          attachment_source = File.join(RAILS_ROOT,"public",attachment.public_filename)
           attachment_destination = File.join(attachments_path,attachment.filename)
+          puts "  exporting Attachment: #{attachment.filename}"
           rio(attachment_source) > rio(attachment_destination)
           attachment_meta = {
               "mime_type" => attachment.content_type,
